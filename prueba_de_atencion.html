@@ -1,0 +1,494 @@
+<html><head><base href="https://ejercicio-concentracion.com/">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ejercicio de Atención y Concentración con Análisis Temporal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #f0f8ff;
+    text-align: center;
+  }
+  #config, #game, #results, #heatmapContainer, #timeAnalysisContainer, #totalResultsContainer {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    max-width: 90vw;
+    width: 100%;
+  }
+  #game, #results, #heatmapContainer, #timeAnalysisContainer, #totalResultsContainer {
+    display: none;
+  }
+  #grid, #heatmap {
+    display: grid;
+    gap: 10px;
+    margin: 20px auto;
+    justify-content: center;
+  }
+  .cell {
+    width: 50px;
+    height: 50px;
+    border: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  .cell:hover {
+    background-color: #e0e0e0;
+  }
+  .target {
+    background-color: #90ee90;
+  }
+  .heatmap-cell {
+    width: 50px;
+    height: 50px;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    padding: 2px;
+    box-sizing: border-box;
+  }
+  .heatmap-time {
+    margin-top: auto;
+  }
+  button {
+    margin: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  #timeAnalysisChart {
+    max-width: 100%;
+    height: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+  th {
+    background-color: #f2f2f2;
+  }
+  @media (max-width: 600px) {
+    .cell, .heatmap-cell {
+      width: 40px;
+      height: 40px;
+      font-size: 8px;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+    }
+  }
+  #fullscreenGame {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    z-index: 1000;
+    overflow: hidden;
+  }
+  #fullscreenGrid {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+</style>
+</head>
+<body>
+  <div id="config">
+    <h2>Configuración del Ejercicio</h2>
+    <label for="gridSize">Tamaño de la cuadrícula:</label>
+    <input type="number" id="gridSize" min="2" max="10" value="5"><br><br>
+    
+    <label for="duration">Duración (segundos):</label>
+    <input type="number" id="duration" min="10" max="300" value="60"><br><br>
+    
+    <label for="targetFrequency">Frecuencia de objetivos (segundos):</label>
+    <input type="number" id="targetFrequency" min="1" max="10" value="3"><br><br>
+    
+    <button onclick="startGame()">Iniciar Ejercicio</button>
+  </div>
+
+  <div id="game">
+    <h2>Ejercicio de Atención y Concentración</h2>
+    <p>Haz clic en el cuadro verde tan pronto como aparezca.</p>
+    <div id="timer"></div>
+    <div id="grid"></div>
+  </div>
+
+  <div id="fullscreenGame">
+    <div id="fullscreenTimer"></div>
+    <div id="fullscreenGrid"></div>
+  </div>
+
+  <div id="results">
+    <h2>Resultados</h2>
+    <p>Tiempo de reacción promedio: <span id="avgReactionTime"></span> segundos</p>
+    <p>Objetivos acertados: <span id="hitTargets"></span></p>
+    <p>Objetivos perdidos: <span id="missedTargets"></span></p>
+    <button onclick="showHeatmap()">Resultado en mapa de calor</button>
+    <button onclick="showTimeAnalysis()">Resultados por tiempo</button>
+    <button onclick="showTotalResults()">Tabla de resultados totales</button>
+    <button onclick="resetGame()">Volver a jugar</button>
+  </div>
+
+  <div id="heatmapContainer">
+    <h2>Mapa de Calor de Tiempos de Reacción</h2>
+    <div id="heatmap"></div>
+    <button onclick="hideHeatmap()">Volver a resultados</button>
+  </div>
+
+  <div id="timeAnalysisContainer">
+    <h2>Análisis Temporal de Tiempos de Reacción</h2>
+    <canvas id="timeAnalysisChart"></canvas>
+    <button onclick="hideTimeAnalysis()">Volver a resultados</button>
+  </div>
+
+  <div id="totalResultsContainer">
+    <h2>Tabla de Resultados Totales</h2>
+    <table id="totalResultsTable">
+      <thead>
+        <tr>
+          <th>Tiempo (s)</th>
+          <th>Tiempo de Reacción (s)</th>
+          <th>Posición X</th>
+          <th>Posición Y</th>
+        </tr>
+      </thead>
+      <tbody id="totalResultsBody">
+      </tbody>
+    </table>
+    <button onclick="hideTotalResults()">Volver a resultados</button>
+  </div>
+
+<script>
+let gridSize, duration, targetFrequency;
+let grid, timer, targetInterval;
+let reactionTimes = [];
+let hitTargets = 0;
+let missedTargets = 0;
+let currentTarget = null;
+let cellReactionTimes = [];
+let timeStampedReactions = [];
+let startTime;
+
+function startGame() {
+  gridSize = parseInt(document.getElementById('gridSize').value);
+  duration = parseInt(document.getElementById('duration').value);
+  targetFrequency = parseInt(document.getElementById('targetFrequency').value);
+
+  document.getElementById('config').style.display = 'none';
+  document.getElementById('fullscreenGame').style.display = 'block';
+
+  createFullscreenGrid();
+  startTimer();
+  targetInterval = setInterval(showTarget, targetFrequency * 1000);
+
+  cellReactionTimes = Array(gridSize * gridSize).fill().map(() => []);
+  timeStampedReactions = [];
+
+  startTime = Date.now();
+
+  // Entrar en pantalla completa
+  const elem = document.documentElement;
+  if (elem.requestFullscreen) {
+    elem.requestFullscreen();
+  } else if (elem.mozRequestFullScreen) { /* Firefox */
+    elem.mozRequestFullScreen();
+  } else if (elem.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+    elem.webkitRequestFullscreen();
+  } else if (elem.msRequestFullscreen) { /* IE/Edge */
+    elem.msRequestFullscreen();
+  }
+}
+
+function createFullscreenGrid() {
+  grid = document.getElementById('fullscreenGrid');
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = `repeat(${gridSize}, auto)`;
+  grid.innerHTML = '';
+
+  for (let i = 0; i < gridSize * gridSize; i++) {
+    let cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.onclick = () => cellClick(i);
+    grid.appendChild(cell);
+  }
+  adjustFullscreenCellSize();
+}
+
+function startTimer() {
+  let timeLeft = duration;
+  timer = setInterval(() => {
+    document.getElementById('fullscreenTimer').textContent = `${timeLeft}`;
+    if (timeLeft <= 0) {
+      endGame();
+    }
+    timeLeft--;
+  }, 1000);
+}
+
+function showTarget() {
+  if (currentTarget !== null) {
+    missedTargets++;
+    grid.children[currentTarget.index].classList.remove('target');
+  }
+  let newTargetIndex;
+  do {
+    newTargetIndex = Math.floor(Math.random() * (gridSize * gridSize));
+  } while (newTargetIndex === currentTarget?.index);
+  
+  grid.children[newTargetIndex].classList.add('target');
+  currentTarget = {
+    index: newTargetIndex,
+    time: Date.now()
+  };
+}
+
+function cellClick(index) {
+  if (currentTarget && index === currentTarget.index) {
+    let reactionTime = (Date.now() - currentTarget.time) / 1000;
+    reactionTimes.push(reactionTime);
+    cellReactionTimes[index].push(reactionTime);
+    timeStampedReactions.push({
+      time: (Date.now() - startTime) / 1000,
+      reactionTime: reactionTime,
+      x: index % gridSize,
+      y: Math.floor(index / gridSize)
+    });
+    hitTargets++;
+    grid.children[index].classList.remove('target');
+    currentTarget = null;
+  }
+}
+
+function endGame() {
+  clearInterval(timer);
+  clearInterval(targetInterval);
+  document.getElementById('fullscreenGame').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+
+  let avgReactionTime = reactionTimes.length > 0 ? reactionTimes.reduce((a, b) => a + b) / reactionTimes.length : 0;
+  document.getElementById('avgReactionTime').textContent = avgReactionTime.toFixed(2);
+  document.getElementById('hitTargets').textContent = hitTargets;
+  document.getElementById('missedTargets').textContent = missedTargets;
+
+  // Salir de pantalla completa
+  if (document.exitFullscreen) {
+    document.exitFullscreen();
+  } else if (document.mozCancelFullScreen) { /* Firefox */
+    document.mozCancelFullScreen();
+  } else if (document.webkitExitFullscreen) { /* Chrome, Safari and Opera */
+    document.webkitExitFullscreen();
+  } else if (document.msExitFullscreen) { /* IE/Edge */
+    document.msExitFullscreen();
+  }
+}
+
+function showHeatmap() {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('heatmapContainer').style.display = 'block';
+  createHeatmap();
+}
+
+function hideHeatmap() {
+  document.getElementById('heatmapContainer').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+}
+
+function createHeatmap() {
+  const heatmap = document.getElementById('heatmap');
+  heatmap.style.gridTemplateColumns = `repeat(${gridSize}, auto)`;
+  heatmap.innerHTML = '';
+
+  const avgReactionTimes = cellReactionTimes.map(times => 
+    times.length > 0 ? times.reduce((a, b) => a + b) / times.length : 0
+  );
+
+  const minTime = Math.min(...avgReactionTimes.filter(t => t > 0));
+  const maxTime = Math.max(...avgReactionTimes);
+
+  for (let i = 0; i < gridSize * gridSize; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'heatmap-cell';
+    
+    if (avgReactionTimes[i] > 0) {
+      const normalizedTime = (avgReactionTimes[i] - minTime) / (maxTime - minTime);
+      const hue = (1 - normalizedTime) * 120; // 120 for green, 0 for red
+      cell.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
+      
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'heatmap-time';
+      timeSpan.textContent = avgReactionTimes[i].toFixed(2) + 's';
+      cell.appendChild(timeSpan);
+    } else {
+      cell.style.backgroundColor = '#ddd';
+      cell.textContent = 'N/A';
+    }
+
+    heatmap.appendChild(cell);
+  }
+  adjustCellSize();
+}
+
+function showTimeAnalysis() {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('timeAnalysisContainer').style.display = 'block';
+  createTimeAnalysisChart();
+}
+
+function hideTimeAnalysis() {
+  document.getElementById('timeAnalysisContainer').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+}
+
+function createTimeAnalysisChart() {
+  const ctx = document.getElementById('timeAnalysisChart').getContext('2d');
+  
+  // Group reactions by 10-second intervals
+  const intervalData = {};
+  for (let i = 0; i < duration; i += 10) {
+    intervalData[i] = [];
+  }
+
+  timeStampedReactions.forEach(reaction => {
+    const interval = Math.floor(reaction.time / 10) * 10;
+    if (intervalData[interval]) {
+      intervalData[interval].push(reaction.reactionTime);
+    }
+  });
+
+  const labels = Object.keys(intervalData);
+  const data = labels.map(interval => {
+    const reactions = intervalData[interval];
+    return reactions.length > 0 ? reactions.reduce((a, b) => a + b) / reactions.length : null;
+  });
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels.map(l => `${l}-${parseInt(l) + 10}s`),
+      datasets: [{
+        label: 'Tiempo de reacción promedio',
+        data: data,
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Tiempo de reacción (segundos)'
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: 'Intervalo de tiempo (segundos)'
+          }
+        }
+      }
+    }
+  });
+}
+
+function showTotalResults() {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('totalResultsContainer').style.display = 'block';
+  const tbody = document.getElementById('totalResultsBody');
+  tbody.innerHTML = '';
+  timeStampedReactions.forEach(reaction => {
+    const row = tbody.insertRow();
+    row.insertCell(0).textContent = reaction.time.toFixed(2);
+    row.insertCell(1).textContent = reaction.reactionTime.toFixed(2);
+    row.insertCell(2).textContent = reaction.x;
+    row.insertCell(3).textContent = reaction.y;
+  });
+}
+
+function hideTotalResults() {
+  document.getElementById('totalResultsContainer').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+}
+
+function resetGame() {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('heatmapContainer').style.display = 'none';
+  document.getElementById('timeAnalysisContainer').style.display = 'none';
+  document.getElementById('totalResultsContainer').style.display = 'none';
+  document.getElementById('config').style.display = 'block';
+  reactionTimes = [];
+  hitTargets = 0;
+  missedTargets = 0;
+  currentTarget = null;
+  cellReactionTimes = [];
+  timeStampedReactions = [];
+}
+
+function adjustCellSize() {
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+  const minDimension = Math.min(screenWidth, screenHeight);
+  const maxCellSize = Math.floor((minDimension * 0.8) / gridSize);
+  
+  const cells = document.querySelectorAll('.cell, .heatmap-cell');
+  cells.forEach(cell => {
+    cell.style.width = `${maxCellSize}px`;
+    cell.style.height = `${maxCellSize}px`;
+  });
+}
+
+function adjustFullscreenCellSize() {
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+  const minDimension = Math.min(screenWidth, screenHeight);
+  const maxCellSize = Math.floor((minDimension * 0.8) / gridSize);
+  
+  const cells = document.querySelectorAll('#fullscreenGrid .cell');
+  cells.forEach(cell => {
+    cell.style.width = `${maxCellSize}px`;
+    cell.style.height = `${maxCellSize}px`;
+  });
+
+  const gridWidth = maxCellSize * gridSize;
+  const gridHeight = maxCellSize * gridSize;
+  document.getElementById('fullscreenGrid').style.width = `${gridWidth}px`;
+  document.getElementById('fullscreenGrid').style.height = `${gridHeight}px`;
+}
+
+window.addEventListener('resize', () => {
+  adjustCellSize();
+  adjustFullscreenCellSize();
+});
+
+</script>
+</body>
+</html>
